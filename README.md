@@ -1,7 +1,7 @@
 # hqGif
 ## A script for ffmpeg to quickly make gifs
 
-```
+```zsh
 #!/bin/zsh
 
 ### Based on this https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
