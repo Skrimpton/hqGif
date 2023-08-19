@@ -1,6 +1,7 @@
 # hqGif
 A script for ffmpeg to quickly make gifs
-[based on this](https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html)
+
+[Link to source](https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html)
 ```zsh
 #!/bin/zsh
 
@@ -41,7 +42,7 @@ Explanation
 
 -scf bicubic
 
-  Use bicubic scaling (lanczos by default)
+  Use bicubic scaling (lancoz by default)
 
 
 —————————————————————————
@@ -360,8 +361,15 @@ else
                     -loop $loops \
                     -y "$out_file"
             fi
-        clean_up
+            clean_up
+        else
+            echo "Couldn't make palette"
+            exit 1
         fi
+
+    else
+        echo "Folder is not vald"
+        exit 1
     fi
 fi
 ```
