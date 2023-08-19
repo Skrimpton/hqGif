@@ -41,7 +41,7 @@ Explanation
 
 -scf bicubic
 
-  Use bicubic scaling (lancoz by default)
+  Use bicubic scaling (lanczos by default)
 
 
 —————————————————————————
@@ -277,7 +277,9 @@ else
 
         clean_up()
         {
+            # [[ -f $TEMP ]] && echo "TEMP EXISTS" || echo "TEMP DOES NOT EXIST"
             rm "$palette" >/dev/null 2>&1
+            # [[ -f $TEMP ]] && echo "TEMP EXISTS" || echo "TEMP DOES NOT EXIST"
         }
 
         palette=$(mktemp -t $name-$$.XXXXXXXXXX.png)
