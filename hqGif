@@ -354,7 +354,14 @@ else
                     -loop $loops \
                     -y "$out_file"
             fi
-        clean_up
+            clean_up
+        else
+            echo "Couldn't make palette"
+            exit 1
         fi
+
+    else
+        echo "Folder is not vald"
+        exit 1
     fi
 fi
