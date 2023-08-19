@@ -7,6 +7,20 @@ A script for ffmpeg to quickly make gifs
 
 ### Based on this https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
 
+# -------------------------------------
+# EDIT THESE TO CHANGE DEFAULT SETTINGS
+# -------------------------------------
+
+start_time=0
+duration=0
+fps=10
+scale=320
+loops=0
+scale_flags="lanczos"
+stats_mode=diff
+# stats_mode=full
+
+# -------------------------------------
 
 printHelp()
 {
@@ -156,19 +170,12 @@ else
         echo "No file detected"
         exit 1
     fi
+
     name="${originalFile##*/}"
     name="${name%.*}"
-
-    start_time=0
-    duration=0
-    fps=10
-    scale=320
-    loops=0
-    scale_flags="lanczos"
-    stats_mode=diff
-    # stats_mode=full
-
     new_folder=""
+
+
 
     # --- Check if there are more arguments than just original file
 
