@@ -11,7 +11,7 @@ A script for ffmpeg to quickly make gifs
 
 # Dependencies                       : ffmpeg
 
-# Based on, and borrows from this    : https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
+# Based on + borrows from this    : https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
 # and this                           : https://superuser.com/a/1323430
 
 # Works in bash and zsh, probably more.
