@@ -364,7 +364,7 @@ else
     new_folder=""
     name=""
     has_url=0
-    passed_name=0
+    # passed_name=0
 
 #     oldifs="$IFS"
     for var in $@
@@ -629,7 +629,7 @@ else
                     name="$1"
                 ;;
                 esac
-                passed_name=1
+                # passed_name=1
             ;;
             --ram|-ram)
                 if [[ $in_ram = 0 ]]
