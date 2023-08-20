@@ -2,6 +2,7 @@
 A script for ffmpeg to quickly make gifs
 
 [Link to source 1](https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html)
+
 [Link to source 2](https://superuser.com/a/1323430)
 ```zsh
 #!/bin/sh
