@@ -48,7 +48,7 @@ A script for ffmpeg to quickly make gifs
 
 # - STATS_MODE ----------------------------
 
-    stats_mode=diff
+    stats_mode="single"
 #     stats_mode=full
 
 # - DITHER --------------------------------
@@ -459,7 +459,7 @@ else
                 ((dither_flag_counter++))
                 dither_flag=1
             ;;
-            --floyd_steinberg|-floyd_steinberg)
+            --floyd-steinberg|-floyd-steinberg)
                 dither="floyd_steinberg"
                 ((dither_flag_counter++))
                 dither_flag=1
@@ -597,6 +597,7 @@ else
 
                 if [[ "${#test_scale_sizes}" = 0 ]]
                 then
+
                     scale="$1"
                     [[ $scale < 128 ]] && echo "What is this, a gif for ants!?"
                 else
@@ -696,9 +697,9 @@ else
 
     if [[ $dither_flag = 1 ]]
     then
-        palette_use="paletteuse=dither=$dither:diff_mode=$diff_mode"
+        palette_use="paletteuse=dither=$dither:diff_mode=$diff_mode:new=1"
     else
-        palette_use="paletteuse=diff_mode=$diff_mode"
+        palette_use="paletteuse=diff_mode=$diff_mode:new=1"
     fi
 
     if [[ $scale_flag_counter > 1 ]]
@@ -771,7 +772,6 @@ else
                 echo "stats_mode=$stats_mode"
                 echo "$palette_use"
             fi
-            exit $1
         }
 
         if [[ $in_ram = 0 ]]
@@ -804,14 +804,14 @@ else
                 # ---  Ugly if-elif-heck to execute based on start_time and duration
                 if [[ $start_time = 0 && $duration = 0 ]]
                 then
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -i "$originalFile" \
                         -vf "$filters, palettegen=stats_mode=$stats_mode" \
                         -update true  \
                         -y "$palette"
 
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -i "$originalFile" \
                         -i "$palette" \
@@ -825,7 +825,7 @@ else
 
                 elif [[ $start_time > 0 && $duration = 0 ]]
                 then
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -ss $start_time \
                         -i "$originalFile" \
@@ -833,7 +833,7 @@ else
                         -update true  \
                         -y "$palette"
 
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -ss $start_time \
                         -i "$originalFile" \
@@ -848,7 +848,7 @@ else
 
                 elif [[ $start_time > 0 && $duration > 0 ]]
                 then
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -ss $start_time \
                         -t $duration \
@@ -857,7 +857,7 @@ else
                         -update true  \
                         -y "$palette"
 
-                    exec ffmpeg \
+                    ffmpeg \
                         -v warning \
                         -ss $start_time \
                         -t $duration \
