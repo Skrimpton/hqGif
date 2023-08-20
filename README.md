@@ -597,7 +597,6 @@ else
 
                 if [[ "${#test_scale_sizes}" = 0 ]]
                 then
-
                     scale="$1"
                     [[ $scale < 128 ]] && echo "What is this, a gif for ants!?"
                 else
