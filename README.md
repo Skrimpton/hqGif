@@ -45,7 +45,6 @@ A script for ffmpeg to quickly make gifs
     new_one_mode=1  # on=1
 #     new_one_mode=0  # off=0
 
-
 # - FPS -----------------------------------
 
     fps=10
