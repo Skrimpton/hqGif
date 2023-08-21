@@ -30,6 +30,22 @@ A script for ffmpeg to quickly make gifs
 
     duration=0
 
+# - DITHER -------------------------------- # Avoid using dither in final command, even if set to none, unless called with arg.
+                                            # Noticably degraded quality when I tested on higher resolution video.
+    dither="none"
+#     dither="floyd_steinberg"
+#     dither="bayer:bayer_scale=2"
+
+# - DIFFMODE ------------------------------
+
+    diff_mode="none"
+#     diff_mode="rectangle"
+
+# - NEW_ONE_MODE -------------------------- # Adds new=1 to paletteuse and stats_mode=single to palettegen
+    new_one_mode=1  # on=1
+#     new_one_mode=0  # off=0
+
+
 # - FPS -----------------------------------
 
     fps=10
@@ -42,43 +58,32 @@ A script for ffmpeg to quickly make gifs
 
     loops=0
 
-# - SCALE_FLAGS ---------------------------
+# - SCALE_FLAGS --------------------------- see --scale-flags
 
     scale_flags="lanczos"
 
-# - STATS_MODE ----------------------------
+# - STATS_MODE ---------------------------- see --stats-mode
 
     stats_mode="single"
 #     stats_mode=full
 
-# - DITHER --------------------------------
+# - IN_RAM -------------------------------- #   If on: be careful with duration of video — CAN USE A LOT OF MEMORY!
+                                            #   <in_ram=0>  -   off  -  genrates a png using mktemp.
+                                            #   <in_ram=1>  -   on   -  does it in RAM
+#     in_ram=0
+    in_ram=1
 
-    dither="none"   # Avoid using dither in final command, even if set to none. if not explicitly asked for.
-                    # Noticably degraded quality when I tested on higher resolution video.
+# - LOCK_NAME_URL ------------------------- #   Locks urls to needing -name
 
-#     dither="sierra2_4a"
-#     dither="bayer:bayer_scale=5"
+    lock_name_url=0
 
-# - DIFFMODE ------------------------------
-
-    diff_mode="none"
-#     diff_mode="rectangle"
-
-# - IN_RAM --------------------------------
-
-#     in_ram=0      #   <in_ram=0>  genrates a png using mktemp.
-    in_ram=1        #   <in_ram=1>  does it in RAM
-                    #   Be careful with duration of video — CAN USE A LOT OF MEMORY!
-
-#-------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#   TODO :
+#       - Add filetype/extension-filter case statement for inputfiles?
+#-------------------------------------------------------------------------------
 
 
-#-------------------------------------------------------------------
-# TODO :
-#   - Add filetype/extension-filter case statement for inputfiles?
-#-------------------------------------------------------------------
-
-# IFS="" # --- Disabling IFS for filenames
+    # IFS="" # --- Disabling IFS for filenames
 
 
 printExample()
@@ -96,8 +101,10 @@ Result:
 Explanation
 ------------
 
-    Just a file will create a GIF in the same folder
+    Just a file or link will create a GIF in the same folder
     using the current default settings of:
+
+    (I recommend using -name if making gif from link)
 
     start_time=$start_time
     duration=$duration
@@ -271,9 +278,49 @@ This avoids double-downloading.
     \".gif\" is appended automatically
 
 
+---new-one|-new-one|-newone|-new1|-n1
+
+    Switches \$new_one_mode on or off,
+    depending on if \$new_one_mode is 1 or 0
+
+    (currently: $new_one_mode)
+
+    -----------------------------------------------------------------
+    This can reduce the size of the GIF quite a bit, or increase it.
+    Give it a shot, but be careful about video-clip length
+    -----------------------------------------------------------------
+
+    on – (1):
+
+        Adds \"new=1\" in paletteuse, and sets stats_mode=single
+
+    off – (0):
+
+        Use single palette for entire gif
+
+
+    From ffmpeg docs:
+
+    new
+        Take new palette for each output frame.
+
+    single
+        Compute new histogram for each frame.
+
+
+
 --ram|-ram
 
-    Switches to opposite of current default ram state
+    Switches to opposite of current default \$in_ram state
+
+    (currently $in_ram)
+
+    on — (1):
+        same setings as --ram-on
+
+    off — (0):
+        same settings as --ram-off
+
 
 
 --ram-off|-ram-off|-palette|--palette
@@ -332,8 +379,23 @@ This avoids double-downloading.
 
     e.g. in seconds or < hh:mm:ssSEPff >
     https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
-"""
 
+
+--stats-mode|-sm|-smode
+
+    Set stats_mode:
+
+    full
+        Compute full frame histograms.
+
+    diff
+        Compute histograms only for the part that differs from previous frame. This might be relevant to give more importance to the moving part of your input if the background is static.
+
+    single
+        Compute new histogram for each frame.
+
+
+"""
 }
 
 
@@ -342,7 +404,7 @@ This avoids double-downloading.
 if [[ -z $@ ]]
 then
     printHelp
-    echo 0
+    exit 0
 else
     palette_use=""
     dither_flag=0
@@ -357,7 +419,7 @@ else
     new_folder=""
     name=""
     has_url=0
-    # passed_name=0
+    passed_name=0
 
 #     oldifs="$IFS"
     for var in $@
@@ -416,13 +478,12 @@ else
 
     isWrong() # --- function() : check if given variable starts with -
     {
-        case "$(echo "$1" | xargs)" in
+        case "$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" in
             -*)
                 true
             ;;
             *)
-                [[ -z $1 ]] && true || false
-
+                [[ -z $(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//') ]] && true || false
             ;;
         esac
     }
@@ -433,6 +494,10 @@ else
         echo "Something is wrong with $1. exiting..."
         exit 1
     }
+
+#-------------------------------------------------------------------------------
+# BEGIN ARGUMENTS SHIFTING
+#-------------------------------------------------------------------------------
 
     while [[ ${#@} > 0 ]]
     do
@@ -447,7 +512,10 @@ else
                 start_time="$1"
             ;;
             --diff-mode|-diff-mode|-dmode|-dm)
-                diff_mode="rectangle"
+                arg="$1"
+                if isWrong "$2";then die "$arg";fi
+                shift
+                diff_mode="$1"
             ;;
             --bayer|-bayer)
                 dither="bayer"
@@ -459,7 +527,7 @@ else
                 ((dither_flag_counter++))
                 dither_flag=1
             ;;
-            --floyd-steinberg|-floyd-steinberg)
+            --floyd_steinberg|-floyd_steinberg|--floyd_steinberg|-floyd_steinberg)
                 dither="floyd_steinberg"
                 ((dither_flag_counter++))
                 dither_flag=1
@@ -469,7 +537,7 @@ else
                 ((dither_flag_counter++))
                 dither_flag=1
             ;;
-            --sierra2_4a|-sierra2_4a)
+            --sierra2_4a|-sierra2_4a|--sierra2-4a|-sierra2-4a)
                 dither="sierra2_4a"
                 ((dither_flag_counter++))
                 dither_flag=1
@@ -489,6 +557,16 @@ else
                 ((dither_flag_counter++))
                 dither_flag=1
             ;;
+            ---new-one | -new-one | -newone | -new1)
+                if [[ $new_one_mode = 1 ]]
+                then
+                    new_one_mode=0
+                    stats_mode="full"
+                else
+                    new_one_mode=1
+                    stats_mode="single"
+                fi
+            ;;
             --dither-off|-doff)
                 dither="none"
                 ((dither_flag_counter++))
@@ -503,28 +581,24 @@ else
                     dither="$1"
                     dither_flag=1
                 fi
-
             ;;
             --duration|-d|-t)
                 arg="$1"
                 if isWrong "$2";then echo "$arg : Can't have a negative duration";exit 1;fi
                 shift
                 duration="$1"
-
             ;;
             --frames-per-second|-fps|--fps)
                 arg="$1"
                 if isWrong "$2";then echo "$arg : GIFs can't have negative frames";exit 1;fi
                 shift
                 fps="$1"
-
             ;;
             --loops|-loops|-loop)
                 arg="$1"
                 if isWrong "$2";then die "$arg";fi
                 shift
                 loops=$1
-
             ;;
             --lanczos|-lanczos)
                 scale_flags="lanczos"
@@ -570,6 +644,13 @@ else
                 scale_flags="spline"
                 ((scale_flag_counter++))
             ;;
+            -to)
+                arg="$1"
+                if isWrong "$2";then echo "$arg : Can't have a negative duration";exit 1;fi
+                shift
+                duration="$1"
+                use_to_duration=1
+            ;;
             --scale-flags|-scf|-sflags|--sflags|-sf)
                 arg="$1"
                 if isWrong "$2";then die "$arg";fi
@@ -586,7 +667,6 @@ else
                     scale_flags="$1"
                 ;;
                 esac
-
             ;;
             --scale|-scale|-sc|-size|-sz|-s)
                 arg="$1"
@@ -597,9 +677,8 @@ else
 
                 if [[ "${#test_scale_sizes}" = 0 ]]
                 then
-
                     scale="$1"
-                    [[ $scale < 128 ]] && echo "What is this, a gif for ants!?"
+                    [[ $scale < 128 ]] && echo "What is this? A gif for ants!?"
                 else
                     new_scale="$1"
                 fi
@@ -610,9 +689,8 @@ else
                 if isWrong "$2";then die "$arg";fi
                 shift
                 stats_mode="$1"
-
             ;;
-            --filters|-f)
+            --filters|-filters|-f)
                 arg="$1"
                 if isWrong "$2";then die "$arg";fi
                 shift
@@ -631,7 +709,7 @@ else
                     name="$1"
                 ;;
                 esac
-                # passed_name=1
+                passed_name=1
             ;;
             --ram|-ram)
                 if [[ $in_ram = 0 ]]
@@ -682,25 +760,24 @@ else
         shift
     done
 
+#-------------------------------------------------------------------------------
+# END OF ARGUMENTS SHIFTING
+#-------------------------------------------------------------------------------
+
+
     if [[ $has_url = 1 ]]
     then
-#         if [[ $passed_name = 0 ]]
-#         then
-# #             echo "Have to use --name when using URLs"
-# #             exit 1
-#         fi
+        if [[ $passed_name = 0 && $lock_name_url = 1 ]]
+        then
+            echo "Have to use --name when using URLs"
+            exit 1
+        fi
         if [[ $new_folder = "" ]]
         then
             new_folder="$PWD"
         fi
     fi
 
-    if [[ $dither_flag = 1 ]]
-    then
-        palette_use="paletteuse=dither=$dither:diff_mode=$diff_mode:new=1"
-    else
-        palette_use="paletteuse=diff_mode=$diff_mode:new=1"
-    fi
 
     if [[ $scale_flag_counter > 1 ]]
     then
@@ -731,6 +808,19 @@ else
 
         setFiltersAndOutfile() # --- function() to set $filters and $out_file.
         {
+            if [[ $new_one_mode = 1 ]]
+            then
+                diff_mode="$diff_mode:new=1"
+                stats_mode="single"
+            fi
+
+            if [[ $dither_flag = 1 ]]
+            then
+                palette_use="paletteuse=dither=$dither:diff_mode=$diff_mode"
+            else
+                palette_use="paletteuse=diff_mode=$diff_mode"
+            fi
+
             if [[ $use_custom_filters = 0 ]]
             then
                 if [[ $new_scale != "" ]]
@@ -848,10 +938,13 @@ else
 
                 elif [[ $start_time > 0 && $duration > 0 ]]
                 then
+
+                    [[ $use_to_duration = 1 ]] to=(-to "$duration") || to=(-t "$duration")
+
                     ffmpeg \
                         -v warning \
                         -ss $start_time \
-                        -t $duration \
+                        "${to[@]}" \
                         -i "$originalFile" \
                         -vf "$filters,palettegen=stats_mode=$stats_mode" \
                         -update true  \
@@ -860,7 +953,7 @@ else
                     ffmpeg \
                         -v warning \
                         -ss $start_time \
-                        -t $duration \
+                        "${to[@]}" \
                         -i "$originalFile" \
                         -i "$palette" \
                         -filter_complex \
@@ -883,48 +976,49 @@ else
             if [[ $start_time = 0 && $duration = 0 ]]
             then
                 ffmpeg \
-                -i "$originalFile" \
-                -filter_complex \
-                    "$filters,split=2 [a][b]; \
-                    [a] palettegen=stats_mode=$stats_mode [pal]; \
-                    [b] fifo [b]; \
-                    [b] [pal] $palette_use" \
-                -n "$out_file"
+                    -i "$originalFile" \
+                    -filter_complex \
+                        "$filters,split=2 [a][b]; \
+                        [a] palettegen=stats_mode=$stats_mode [pal]; \
+                        [b] fifo [b]; \
+                        [b] [pal] $palette_use" \
+                    -n "$out_file"
 
                 notifyStatus $?
 
             elif [[ $start_time > 0 && $duration = 0 ]]
             then
                 ffmpeg \
-                -v warning \
-                -ss $start_time \
-                -i "$originalFile" \
-                -filter_complex \
-                    "$filters,split=2 [a][b]; \
-                    [a] palettegen=stats_mode=$stats_mode [pal]; \
-                    [b] fifo [b]; \
-                    [b] [pal] $palette_use" \
-                -n "$out_file"
+                    -v warning \
+                    -ss $start_time \
+                    -i "$originalFile" \
+                    -filter_complex \
+                        "$filters,split=2 [a][b]; \
+                        [a] palettegen=stats_mode=$stats_mode [pal]; \
+                        [b] fifo [b]; \
+                        [b] [pal] $palette_use" \
+                    -n "$out_file"
 
                 notifyStatus $?
 
             elif [[ $start_time > 0 && $duration > 0 ]]
             then
-                echo "here I am"
+
+                [[ $use_to_duration = 1 ]] to=(-to "$duration") || to=(-t "$duration")
+
                 ffmpeg \
-                -v warning \
-                -ss $start_time \
-                -t $duration \
-                -i "$originalFile" \
-                -filter_complex \
-                    "$filters,split=2 [a][b]; \
-                    [a] palettegen=stats_mode=$stats_mode [pal]; \
-                    [b] fifo [b]; \
-                    [b] [pal] $palette_use" \
-                -n "$out_file"
+                    -v warning \
+                    -ss $start_time \
+                    "${to[@]}" \
+                    -i "$originalFile" \
+                    -filter_complex \
+                        "$filters,split=2 [a][b]; \
+                        [a] palettegen=stats_mode=$stats_mode [pal]; \
+                        [b] fifo [b]; \
+                        [b] [pal] $palette_use" \
+                    -n "$out_file"
 
                 notifyStatus $?
-
             fi
         fi
 
