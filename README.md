@@ -42,6 +42,7 @@ A script for ffmpeg to quickly make gifs
 #     diff_mode="rectangle"
 
 # - NEW_ONE_MODE -------------------------- # Adds new=1 to paletteuse and stats_mode=single to palettegen
+
     new_one_mode=1  # on=1
 #     new_one_mode=0  # off=0
 
@@ -67,10 +68,9 @@ A script for ffmpeg to quickly make gifs
 #     stats_mode=full
 
 # - IN_RAM -------------------------------- #   If on: be careful with duration of video — CAN USE A LOT OF MEMORY!
-                                            #   <in_ram=0>  -   off  -  genrates a png using mktemp.
-                                            #   <in_ram=1>  -   on   -  does it in RAM
-#     in_ram=0
-    in_ram=1
+
+    # in_ram=0                              #   <in_ram=0>  -   off  -  genrates a png using mktemp.
+    in_ram=1                                #   <in_ram=1>  -   on   -  does it in RAM
 
 # - LOCK_NAME_URL ------------------------- #   Locks urls to needing -name
 
@@ -82,7 +82,7 @@ A script for ffmpeg to quickly make gifs
 #-------------------------------------------------------------------------------
 
 
-    # IFS="" # --- Disabling IFS for filenames
+    IFS="" # --- Disabling IFS for filenames
 
 
 printExample()
@@ -321,7 +321,6 @@ This avoids double-downloading.
         same settings as --ram-off
 
 
-
 --ram-off|-ram-off|-palette|--palette
 
     Creates palette .png using mktemp
@@ -420,7 +419,6 @@ else
     has_url=0
     passed_name=0
 
-#     oldifs="$IFS"
     for var in $@
     do
         regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]\.[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$' # https://stackoverflow.com/a/55267709
@@ -436,6 +434,7 @@ else
             has_url=1
         fi
     done
+
     if [[ "$originalFile" = "" || ! -f "$originalFile" ]] && [[ $has_url = 0 ]]
     then
 
@@ -446,8 +445,10 @@ else
     name="${originalFile##*/}"
     name="${name%.*}"
 
-    # --- Check if there are more arguments than just original file
 
+#-------------------------------------------------------------------------------
+# BEGIN Declare arg and name check, and exit on error functions
+#-------------------------------------------------------------------------------
 
     nameIsWrong() # --- function() : check if given name is bad
     {
@@ -495,8 +496,12 @@ else
     }
 
 #-------------------------------------------------------------------------------
+# END Declare arg and name-check, and exit-on-error functions
+#-------------------------------------------------------------------------------
 # BEGIN ARGUMENTS SHIFTING
 #-------------------------------------------------------------------------------
+
+    # --- Check if there are more arguments than just original file
 
     while [[ ${#@} > 0 ]]
     do
@@ -760,7 +765,7 @@ else
     done
 
 #-------------------------------------------------------------------------------
-# END OF ARGUMENTS SHIFTING
+# END ARGUMENTS SHIFTING
 #-------------------------------------------------------------------------------
 
 
@@ -800,6 +805,11 @@ else
     else # Assign folder based on input file if no given folder
         folder="${originalFile%/*}"
         folder="${folder}"
+    fi
+
+    if [[ ! -d "${folder}" || ! -w "${folder}" ]]
+    then
+        folder="$PWD"
     fi
 
     if [[ -d "${folder}" && -w "${folder}" ]] # --- Verify folder.
@@ -906,7 +916,7 @@ else
                         -i "$palette" \
                         -filter_complex \
                             "$filters [x]; \
-                            [x][1:v] $palette_use" \
+                            [x][1:v] $palette_use,format=pal8" \
                         -loop $loops \
                         -n "$out_file"
 
@@ -929,7 +939,7 @@ else
                         -i "$palette" \
                         -filter_complex \
                             "$filters [x]; \
-                            [x][1:v] $palette_use" \
+                            [x][1:v] $palette_use,format=pal8" \
                         -loop $loops \
                         -n "$out_file"
 
@@ -938,7 +948,7 @@ else
                 elif [[ $start_time > 0 && $duration > 0 ]]
                 then
 
-                    [[ $use_to_duration = 1 ]] to=(-to "$duration") || to=(-t "$duration")
+                    [[ $use_to_duration = 1 ]] && to=(-to "$duration") || to=(-t "$duration")
 
                     ffmpeg \
                         -v warning \
@@ -957,7 +967,32 @@ else
                         -i "$palette" \
                         -filter_complex \
                             "$filters [x]; \
-                            [x][1:v] $palette_use" \
+                            [x][1:v] $palette_use,format=pal8" \
+                        -loop $loops \
+                        -n "$out_file"
+
+                    notifyStatus $?
+                elif [[ $start_time = 0 && $duration > 0 ]]
+                then
+
+                    [[ $use_to_duration = 1 ]] && to=(-to "$duration") || to=(-t "$duration")
+
+                    ffmpeg \
+                        -v warning \
+                        "${to[@]}" \
+                        -i "$originalFile" \
+                        -vf "$filters,palettegen=stats_mode=$stats_mode" \
+                        -update true  \
+                        -y "$palette"
+
+                    ffmpeg \
+                        -v warning \
+                        "${to[@]}" \
+                        -i "$originalFile" \
+                        -i "$palette" \
+                        -filter_complex \
+                            "$filters [x]; \
+                            [x][1:v] $palette_use,format=pal8" \
                         -loop $loops \
                         -n "$out_file"
 
@@ -980,7 +1015,7 @@ else
                         "$filters,split=2 [a][b]; \
                         [a] palettegen=stats_mode=$stats_mode [pal]; \
                         [b] fifo [b]; \
-                        [b] [pal] $palette_use" \
+                        [b] [pal] $palette_use,format=pal8" \
                     -n "$out_file"
 
                 notifyStatus $?
@@ -995,7 +1030,7 @@ else
                         "$filters,split=2 [a][b]; \
                         [a] palettegen=stats_mode=$stats_mode [pal]; \
                         [b] fifo [b]; \
-                        [b] [pal] $palette_use" \
+                        [b] [pal] $palette_use,format=pal8" \
                     -n "$out_file"
 
                 notifyStatus $?
@@ -1003,8 +1038,8 @@ else
             elif [[ $start_time > 0 && $duration > 0 ]]
             then
 
-                [[ $use_to_duration = 1 ]] to=(-to "$duration") || to=(-t "$duration")
-
+                [[ $use_to_duration = 1 ]] && to=(-to "$duration") || to=(-t "$duration")
+                # "$filters,setsar=1,eq=brightness=0.0:saturation=1.0,split=2 [a][b];
                 ffmpeg \
                     -v warning \
                     -ss $start_time \
@@ -1014,7 +1049,25 @@ else
                         "$filters,split=2 [a][b]; \
                         [a] palettegen=stats_mode=$stats_mode [pal]; \
                         [b] fifo [b]; \
-                        [b] [pal] $palette_use" \
+                        [b] [pal] $palette_use,format=pal8" \
+                    -n "$out_file"
+
+                notifyStatus $?
+
+            elif [[ $start_time = 0 && $duration > 0 ]]
+            then
+
+                [[ $use_to_duration = 1 ]] && to=(-to "$duration") || to=(-t "$duration")
+                # "$filters,setsar=1,eq=brightness=0.0:saturation=1.0,split=2 [a][b];
+                ffmpeg \
+                    -v warning \
+                    "${to[@]}" \
+                    -i "$originalFile" \
+                    -filter_complex \
+                        "$filters,split=2 [a][b]; \
+                        [a] palettegen=stats_mode=$stats_mode [pal]; \
+                        [b] fifo [b]; \
+                        [b] [pal] $palette_use,format=pal8" \
                     -n "$out_file"
 
                 notifyStatus $?
